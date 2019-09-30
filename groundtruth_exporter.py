@@ -131,7 +131,7 @@ def import_csv():
 				frame["annotations"].append(new_annotation)
 
 
-		_path = "./MOTA_annotated.json"
+		_path = "./Hockey_GroundTruth.json"
 		if _path != "":
 			with open("{0}".format(_path), 'w') as f:
 				json.dump(json_frames, f, indent=4)
