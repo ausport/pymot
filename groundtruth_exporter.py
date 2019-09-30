@@ -7,6 +7,56 @@ import numpy as np
 Import ground truth JSON from Microworks dataset, and convert to MOTA-friendly JSON groundtruth format.
 """
 
+"""
+	[
+		{
+			"frames": [
+				{
+					"timestamp": 0.054,
+					"num": 0,
+					"class": "frame",
+					"annotations": [
+						{
+							"dco": true,
+							"height": 31.0,
+							"width": 31.0,
+							"id": "sheldon",
+							"y": 105.0,
+							"x": 608.0
+						}
+					]
+				},
+				{
+					"timestamp": 3.854,
+					"num": 95,
+					"class": "frame",
+					"annotations": [
+						{
+							"dco": true,
+							"height": 31.0,
+							"width": 31.0,
+							"id": "sheldon",
+							"y": 105.0,
+							"x": 608.0
+						},
+						{
+							"dco": true,
+							"height": 38.0,
+							"width": 29.0,
+							"id": "leonard",
+							"y": 145.0,
+							"x": 622.0
+						}
+					]
+				}
+			],
+			"class": "video",
+			"filename": "/cvhci/data/multimedia/bigbangtheory/bbt_s01e01/bbt_s01e01.idx"
+		}
+	]
+
+"""
+
 def import_csv():
 	_instances = []
 	_frames = []
@@ -63,7 +113,7 @@ def import_csv():
 				_bbox = [_left, _top, _width, _height]
 				print(_bbox)
 				new_annotation = {
-					# "dco": False,		//Not required for hypotheses..
+					"dco": False,		# Not required for hypotheses..
 					"height": _height,
 					"width": _width,
 					"id": row[2],
