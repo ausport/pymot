@@ -80,12 +80,14 @@ def import_csv():
 		sortedlist = sorted(reader, key=lambda _row: _row[4], reverse=False)
 		_current_frame = 1
 		_frame_labels = []
-
-
-
 		_last_valid_frame_number = 0
 		_is_new_frame_number = True
-		frame = {}
+
+		frame = {'timestamp': 0,
+			'num': 0,
+			"class": "frame",
+			"annotations": []
+			}
 
 		for row in sortedlist:
 
@@ -93,10 +95,14 @@ def import_csv():
 
 				print(row)
 				_t = int(row[4].rsplit('.', 1)[0])
-
-				if _t != _last_valid_frame_number:
+				print(_t)
+				if _t > _last_valid_frame_number:
 					# New frame
 					_last_valid_frame_number = _t
+					_is_new_frame_number = True
+
+					if len(frame["annotations"]) > 0:
+						json_frames["frames"].append(frame)
 
 					# Create frame stub
 					frame = {'timestamp': float(_t / 25.),
@@ -105,13 +111,12 @@ def import_csv():
 							"annotations": []
 							}
 
-				# print(row)
 				_top = int(row[9])
 				_left = int(row[10])
 				_width = int(row[11])
 				_height = int(row[12])
 				_bbox = [_left, _top, _width, _height]
-				print(_bbox)
+				# print(_bbox)
 				new_annotation = {
 					"dco": False,		# Not required for hypotheses..
 					"height": _height,
@@ -121,11 +126,16 @@ def import_csv():
 					"x": _left - _width / 2
 				}
 
-				print(new_annotation)
+				# print(new_annotation)
 
 				frame["annotations"].append(new_annotation)
 
 
+		_path = "./MOTA_annotated.json"
+		if _path != "":
+			with open("{0}".format(_path), 'w') as f:
+				json.dump(json_frames, f, indent=4)
+				f.write(os.linesep)
 
 
 if __name__ == "__main__":
