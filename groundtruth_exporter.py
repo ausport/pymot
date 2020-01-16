@@ -84,7 +84,7 @@ def color_lut(k):
 	return lut[k]
 
 
-def import_csv():
+def import_csv(annotate_video=False):
 	_instances = []
 	_frames = []
 	_global_index = 0
@@ -96,27 +96,31 @@ def import_csv():
 	path_detections = "{0}/Dropbox/_Microwork/Annotation_5min/{1}".format(os.path.expanduser("~"), _set[0])
 	path_video = "{0}/Dropbox/_Microwork/5min_tracking/{1}".format(os.path.expanduser("~"), _set[1])
 	movie_out = "{0}/Dropbox/_Microwork/5min_tracking/{1}".format(os.path.expanduser("~"), _set[2])
+	_video_writer = None
+	mpv = None
 
 	assert os.path.exists(path_detections), "Couldn't find detections."
-	assert os.path.exists(path_video), "Couldn't find video."
 
-	mpv = CV2Video.CV2VideoObject(path_video, verbose_mode=False)
-	mpv.showDetails()
-	w = mpv.video_width()
-	h = mpv.video_height()
+	if annotate_video:
+		assert os.path.exists(path_video), "Couldn't find video."
 
-	if mpv is None:
-		print("Couldn't load the video...")
-		sys.exit(1)
+		mpv = CV2Video.CV2VideoObject(path_video, verbose_mode=False)
+		mpv.showDetails()
+		w = mpv.video_width()
+		h = mpv.video_height()
 
-	# Create output video context
-	assert len(movie_out) > 0
+		if mpv is None:
+			print("Couldn't load the video...")
+			sys.exit(1)
 
-	print("Preparing video output to", movie_out)
-	print("Input/Output Dimensions: {0} x {1}".format(w, h))
-	print("**** THIS COULD TAKE A WHILE ***")
-	fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-	_video_writer = cv2.VideoWriter(movie_out, fourcc, 50, (w, h), True)
+		# Create output video context
+		assert len(movie_out) > 0
+
+		print("Preparing video output to", movie_out)
+		print("Input/Output Dimensions: {0} x {1}".format(w, h))
+		print("**** THIS COULD TAKE A WHILE ***")
+		fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+		_video_writer = cv2.VideoWriter(movie_out, fourcc, 25, (w, h), True)
 
 	json_frames = {"frames": [], "class": "video", "filename": path_detections}
 
@@ -133,9 +137,10 @@ def import_csv():
 
 		frame = {'timestamp': 0, 'num': 0, "class": "frame", "annotations": []}
 
-		# Pull first video frame
-		pil_original_image = mpv.getFrame(0)
-		draw = ImageDraw.Draw(pil_original_image)
+		if annotate_video:
+			# Pull first video frame
+			pil_original_image = mpv.getFrame(0)
+			draw = ImageDraw.Draw(pil_original_image)
 
 		for row in sortedlist:
 
@@ -149,14 +154,20 @@ def import_csv():
 
 					if len(frame["annotations"]) > 0:
 						json_frames["frames"].append(frame)
-						_video_writer.write(cv2.cvtColor(np.array(pil_original_image), cv2.COLOR_RGB2BGR))
+
+						if annotate_video:
+							_video_writer.write(cv2.cvtColor(np.array(pil_original_image), cv2.COLOR_RGB2BGR))
 
 					# Create frame stub
 					frame = {'timestamp': float(_t / 25.), 'num': _t, "class": "frame", "annotations": []}
 
-					# Pull video frame
-					pil_original_image = mpv.getFrame(_t)
-					draw = ImageDraw.Draw(pil_original_image)
+					if annotate_video:
+						# Pull video frame
+						pil_original_image = mpv.getFrame(_t)
+						draw = ImageDraw.Draw(pil_original_image)
+
+				if _t > 25*60:
+					break
 
 				_top = int(row[9])
 				_left = int(row[10])
@@ -173,18 +184,19 @@ def import_csv():
 					"x": _left - _width / 2
 				}
 
-				_id = [int(s) for s in row[2].split() if s.isdigit()]
-				if len(_id) > 0:
-					_lut = color_lut(_id[0])
-				else:
-					_lut = ([0, 0, 0])
+				if annotate_video:
+					_id = [int(s) for s in row[2].split() if s.isdigit()]
+					if len(_id) > 0:
+						_lut = color_lut(_id[0])
+					else:
+						_lut = ([0, 0, 0])
 
-				draw.rectangle((_left, _top, _left + _width, _top + _height), outline=_lut)
-				draw.text((_left, _top), row[2], font=fnt, fill=_lut)
+					draw.rectangle((_left, _top, _left + _width, _top + _height), outline=_lut)
+					draw.text((_left, _top), row[2], font=fnt, fill=_lut)
 
 				frame["annotations"].append(new_annotation)
 
-		_path = "./Hockey_GroundTruth.json"
+		_path = "./Hockey_GroundTruth2.json"
 		if _path != "":
 			with open("{0}".format(_path), 'w') as _f:
 				json.dump(json_frames, _f, indent=4)
@@ -197,6 +209,6 @@ if __name__ == "__main__":
 	print("*\n* COMPILE MOTA GROUND TRUTH FILES!\n*")
 	print("* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
 
-	import_csv()
+	import_csv(annotate_video=True)
 
 	print("All done...")
