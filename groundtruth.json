@@ -8,8 +8,8 @@
                 "annotations": [
                     {
                         "dco": true, 
-                        "height": 31.0, 
-                        "width": 31.0, 
+                        "height": 32.0,
+                        "width": 32.0,
                         "id": "sheldon", 
                         "y": 105.0, 
                         "x": 608.0 
@@ -23,19 +23,19 @@
                 "annotations": [
                     {
                         "dco": true, 
-                        "height": 31.0, 
-                        "width": 31.0, 
+                        "height": 30.0,
+                        "width": 33.0,
                         "id": "sheldon", 
-                        "y": 105.0, 
-                        "x": 608.0 
+                        "y": 108.0,
+                        "x": 609.0
                     }, 
                     {
                         "dco": true, 
                         "height": 38.0, 
                         "width": 29.0, 
                         "id": "leonard", 
-                        "y": 145.0, 
-                        "x": 622.0
+                        "y": 140.0,
+                        "x": 627.0
                     }
                 ]
             }

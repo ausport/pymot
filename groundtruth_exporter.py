@@ -6,6 +6,8 @@ import numpy as np
 import cv2
 from VideoTools import CV2Video
 from PIL import ImageDraw, ImageFont
+import motmetrics as mm
+
 
 """
 Import ground truth JSON from Microworks dataset, and convert to MOTA-friendly JSON ground truth format.
@@ -202,6 +204,8 @@ def import_csv(annotate_video=False):
 				json.dump(json_frames, _f, indent=4)
 				_f.write(os.linesep)
 
+	return json_frames
+
 
 if __name__ == "__main__":
 
@@ -209,6 +213,91 @@ if __name__ == "__main__":
 	print("*\n* COMPILE MOTA GROUND TRUTH FILES!\n*")
 	print("* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
 
-	import_csv(annotate_video=True)
+	detections = import_csv(annotate_video=False)
 
-	print("All done...")
+	with open('groundtruth.json', 'r') as f:
+		gt_dict = json.load(f)
+
+	with open('hypotheses.json', 'r') as f:
+		h_dict = json.load(f)
+
+	id_labels = []
+
+	# Create an accumulator that will be updated during each frame
+	acc = mm.MOTAccumulator(auto_id=True)
+
+	# Iterate through ground truth frames.
+	for gt in gt_dict[0]["frames"]:
+
+		_frame_num = gt['num']
+		# print("*", _frame_num)
+		id_labels = []
+
+		a = np.empty((0, 4), int)
+		# Append detections for this frame
+		for annotation in gt['annotations']:
+			_x = annotation['x']
+			_y = annotation['y']
+			_w = annotation['width']
+			_h = annotation['height']
+			print("Adding GT:", _x, _y, _w, _h)
+			id_labels.append(annotation['id'])
+			a = np.append(a, np.array([[_x, _y, _w, _h]]), axis=0)
+
+		# Find detections matching frame id.
+		hypothesis_frame = [x for x in h_dict[0]["frames"] if x['num'] == _frame_num][0]
+		# print("Sanity", hypothesis_frame)
+		b = np.empty((0, 4), int)
+		h_id = []
+		for hypotheses in hypothesis_frame['hypotheses']:
+			_x = hypotheses['x']
+			_y = hypotheses['y']
+			_w = hypotheses['width']
+			_h = hypotheses['height']
+			print("Adding H:", _x, _y, _w, _h)
+			b = np.append(b, np.array([[_x, _y, _w, _h]]), axis=0)
+			h_id.append(hypotheses['id'])
+
+		# print("H Frame {0}:\n {1}".format(_frame_num, hypothesis_frame))
+
+		print("GT:")
+		print(a)
+
+		print("h_id")
+		print(h_id)
+
+		print("distances.iou_matrix")
+		d = mm.distances.iou_matrix(a, b, max_iou=0.5)
+
+		print(d)
+
+
+		print(id_labels)
+
+		# Call update once for per frame. For now, assume distances between
+		# frame objects / hypotheses are given.
+		acc.update(
+			id_labels,                 # Ground truth objects in this frame
+			h_id,                  # Detector hypotheses in this frame
+			d
+		)
+
+		print(acc.events)  # a pandas DataFrame containing all events
+
+		mh = mm.metrics.create()
+		summary = mh.compute(acc, metrics=['num_frames', 'mota', 'motp'], name='acc')
+		print(summary)
+
+		# Generate summary statistics
+		summary = mh.compute_many(
+			[acc, acc.events.loc[0:1]],
+			metrics=mm.metrics.motchallenge_metrics,
+			names=['full', 'part'])
+
+		# Make it look nice...
+		strsummary = mm.io.render_summary(
+			summary,
+			formatters=mh.formatters,
+			namemap=mm.io.motchallenge_metric_names
+		)
+		print(strsummary)
