@@ -215,10 +215,10 @@ if __name__ == "__main__":
 
 	detections = import_csv(annotate_video=False)
 
-	with open('groundtruth.json', 'r') as f:
+	with open('Hockey_GroundTruth2.json', 'r') as f:
 		gt_dict = json.load(f)
 
-	with open('hypotheses.json', 'r') as f:
+	with open('predictions.json', 'r') as f:
 		h_dict = json.load(f)
 
 	id_labels = []
@@ -227,7 +227,7 @@ if __name__ == "__main__":
 	acc = mm.MOTAccumulator(auto_id=True)
 
 	# Iterate through ground truth frames.
-	for gt in gt_dict[0]["frames"]:
+	for gt in gt_dict["frames"]:
 
 		_frame_num = gt['num']
 		# print("*", _frame_num)
@@ -246,7 +246,10 @@ if __name__ == "__main__":
 
 		# Find detections matching frame id.
 		hypothesis_frame = [x for x in h_dict[0]["frames"] if x['num'] == _frame_num][0]
-		# print("Sanity", hypothesis_frame)
+
+		if len(hypothesis_frame['hypotheses']) == 0:
+			continue
+
 		b = np.empty((0, 4), int)
 		h_id = []
 		for hypotheses in hypothesis_frame['hypotheses']:
@@ -271,7 +274,6 @@ if __name__ == "__main__":
 
 		print(d)
 
-
 		print(id_labels)
 
 		# Call update once for per frame. For now, assume distances between
@@ -282,22 +284,22 @@ if __name__ == "__main__":
 			d
 		)
 
-		print(acc.events)  # a pandas DataFrame containing all events
+	print(acc.events)  # a pandas DataFrame containing all events
 
-		mh = mm.metrics.create()
-		summary = mh.compute(acc, metrics=['num_frames', 'mota', 'motp'], name='acc')
-		print(summary)
+	mh = mm.metrics.create()
+	summary = mh.compute(acc, metrics=['num_frames', 'mota', 'motp'], name='acc')
+	print(summary)
 
-		# Generate summary statistics
-		summary = mh.compute_many(
-			[acc, acc.events.loc[0:1]],
-			metrics=mm.metrics.motchallenge_metrics,
-			names=['full', 'part'])
+	# Generate summary statistics
+	summary = mh.compute_many(
+		[acc, acc.events.loc[0:1]],
+		metrics=mm.metrics.motchallenge_metrics,
+		names=['full', 'part'])
 
-		# Make it look nice...
-		strsummary = mm.io.render_summary(
-			summary,
-			formatters=mh.formatters,
-			namemap=mm.io.motchallenge_metric_names
-		)
-		print(strsummary)
+	# Make it look nice...
+	strsummary = mm.io.render_summary(
+		summary,
+		formatters=mh.formatters,
+		namemap=mm.io.motchallenge_metric_names
+	)
+	print(strsummary)
