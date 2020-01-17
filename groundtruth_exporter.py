@@ -168,7 +168,7 @@ def import_csv(annotate_video=False):
 						pil_original_image = mpv.getFrame(_t)
 						draw = ImageDraw.Draw(pil_original_image)
 
-				if _t > 25*60:
+				if _t > 25*30:
 					break
 
 				_top = int(row[9])
