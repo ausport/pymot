@@ -230,6 +230,10 @@ if __name__ == "__main__":
 	for gt in gt_dict["frames"]:
 
 		_frame_num = gt['num']
+
+		if _frame_num > 5:
+			break
+
 		# print("*", _frame_num)
 		id_labels = []
 
@@ -261,28 +265,17 @@ if __name__ == "__main__":
 			b = np.append(b, np.array([[_x, _y, _w, _h]]), axis=0)
 			h_id.append(hypotheses['id'])
 
-		# print("H Frame {0}:\n {1}".format(_frame_num, hypothesis_frame))
-
-		print("GT:")
-		print(a)
-
-		print("h_id")
-		print(h_id)
-
-		print("distances.iou_matrix")
-		d = mm.distances.iou_matrix(a, b, max_iou=0.5)
-
-		print(d)
-
-		print(id_labels)
+		d = mm.distances.norm2squared_matrix(a, b, max_d2=2000)
 
 		# Call update once for per frame. For now, assume distances between
 		# frame objects / hypotheses are given.
-		acc.update(
+		frame_id = acc.update(
 			id_labels,                 # Ground truth objects in this frame
 			h_id,                  # Detector hypotheses in this frame
 			d
 		)
+
+		print(acc.mot_events.loc[frame_id])
 
 	print(acc.events)  # a pandas DataFrame containing all events
 
