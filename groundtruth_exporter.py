@@ -86,22 +86,104 @@ def color_lut(k):
 	return lut[k]
 
 
-def import_csv(annotate_video=False):
+def import_csv(ground_truth_detections):
+
 	_instances = []
 	_frames = []
 	_global_index = 0
 	_min_area = 20
 	_truncated_n = np.linspace(1, 750, num=200, dtype=int)  # How many samples from a truncated set?
+
+	print(ground_truth_detections)
+	assert os.path.exists(ground_truth_detections), "Couldn't find ground truth detections."
+
+	json_frames = {"frames": [], "class": "video", "filename": ground_truth_detections}
+
+	# Open predictions and convert to the JSON format we've adopted.
+	with open(ground_truth_detections, 'rt') as f:
+		reader = csv.reader(f, delimiter=',', quotechar='"')
+		sortedlist = sorted(reader, key=lambda _row: _row[4], reverse=False)
+		_current_frame = 1
+		_frame_labels = []
+		_last_valid_frame_number = 0
+		_is_new_frame_number = True
+
+		frame = {'timestamp': 0, 'num': 0, "class": "frame", "annotations": []}
+
+		for row in sortedlist:
+
+			if not row[0] == '#':
+
+				_t = int(row[4].rsplit('.', 1)[0])
+				if _t > _last_valid_frame_number:
+					# New frame
+					_last_valid_frame_number = _t
+					_is_new_frame_number = True
+
+					if len(frame["annotations"]) > 0:
+						json_frames["frames"].append(frame)
+
+					# Create frame stub
+					frame = {'timestamp': float(_t / 25.), 'num': _t, "class": "frame", "annotations": []}
+
+				if _t > 25*30:
+					break
+
+				_top = int(row[9])
+				_left = int(row[10])
+				_width = int(row[11])
+				_height = int(row[12])
+				_bbox = [_left, _top, _width, _height]
+
+				new_annotation = {
+					"dco": False,		# Not required for hypotheses..
+					"height": _height,
+					"width": _width,
+					"id": row[2],
+					"y": _top, # - _height / 2,
+					"x": _left # - _width / 2
+				}
+
+				frame["annotations"].append(new_annotation)
+
+		_path = "./Hockey_GroundTruth2.json"
+		if _path != "":
+			with open("{0}".format(_path), 'w') as _f:
+				json.dump(json_frames, _f, indent=4)
+				_f.write(os.linesep)
+
+	return json_frames
+
+
+if __name__ == "__main__":
+
+	annotate_video = True
+
+	print("\n\n* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
+	print("*\n* COMPILE MOTA GROUND TRUTH FILES!\n*")
+	print("* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
+
 	_set = "0_hockey_5mins.csv", "0_hockey_5mins.mp4", "0_hockey_5mins_annotated.mp4"
 
 	# If running locally this should work.
-	path_detections = "{0}/Dropbox/_Microwork/Annotation_5min/{1}".format(os.path.expanduser("~"), _set[0])
+	gt_path = "{0}/Dropbox/_Microwork/Annotation_5min/{1}".format(os.path.expanduser("~"), _set[0])
 	path_video = "{0}/Dropbox/_Microwork/5min_tracking/{1}".format(os.path.expanduser("~"), _set[1])
 	movie_out = "{0}/Dropbox/_Microwork/5min_tracking/{1}".format(os.path.expanduser("~"), _set[2])
+
+	detections = import_csv(gt_path)
+
 	_video_writer = None
 	mpv = None
+	pil_original_image = None
 
-	assert os.path.exists(path_detections), "Couldn't find detections."
+	ImageFont.load_default()
+	fnt = ImageFont.load_default()
+
+	with open('Hockey_GroundTruth2.json', 'r') as f:
+		gt_dict = json.load(f)
+
+	with open('predictions.json', 'r') as f:
+		h_dict = json.load(f)
 
 	if annotate_video:
 		assert os.path.exists(path_video), "Couldn't find video."
@@ -120,106 +202,9 @@ def import_csv(annotate_video=False):
 
 		print("Preparing video output to", movie_out)
 		print("Input/Output Dimensions: {0} x {1}".format(w, h))
-		print("**** THIS COULD TAKE A WHILE ***")
+		print("**** THIS COULD TAKE A WHILE ***\n")
 		fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 		_video_writer = cv2.VideoWriter(movie_out, fourcc, 25, (w, h), True)
-
-	json_frames = {"frames": [], "class": "video", "filename": path_detections}
-
-	with open(path_detections, 'rt') as f:
-		reader = csv.reader(f, delimiter=',', quotechar='"')
-		sortedlist = sorted(reader, key=lambda _row: _row[4], reverse=False)
-		_current_frame = 1
-		_frame_labels = []
-		_last_valid_frame_number = 0
-		_is_new_frame_number = True
-
-		ImageFont.load_default()
-		fnt = ImageFont.load_default()
-
-		frame = {'timestamp': 0, 'num': 0, "class": "frame", "annotations": []}
-
-		if annotate_video:
-			# Pull first video frame
-			pil_original_image = mpv.getFrame(0)
-			draw = ImageDraw.Draw(pil_original_image)
-
-		for row in sortedlist:
-
-			if not row[0] == '#':
-
-				_t = int(row[4].rsplit('.', 1)[0])
-				if _t > _last_valid_frame_number:
-					# New frame
-					_last_valid_frame_number = _t
-					_is_new_frame_number = True
-
-					if len(frame["annotations"]) > 0:
-						json_frames["frames"].append(frame)
-
-						if annotate_video:
-							_video_writer.write(cv2.cvtColor(np.array(pil_original_image), cv2.COLOR_RGB2BGR))
-
-					# Create frame stub
-					frame = {'timestamp': float(_t / 25.), 'num': _t, "class": "frame", "annotations": []}
-
-					if annotate_video:
-						# Pull video frame
-						pil_original_image = mpv.getFrame(_t)
-						draw = ImageDraw.Draw(pil_original_image)
-
-				if _t > 25*30:
-					break
-
-				_top = int(row[9])
-				_left = int(row[10])
-				_width = int(row[11])
-				_height = int(row[12])
-				_bbox = [_left, _top, _width, _height]
-
-				new_annotation = {
-					"dco": False,		# Not required for hypotheses..
-					"height": _height,
-					"width": _width,
-					"id": row[2],
-					"y": _top - _height / 2,
-					"x": _left - _width / 2
-				}
-
-				if annotate_video:
-					_id = [int(s) for s in row[2].split() if s.isdigit()]
-					if len(_id) > 0:
-						_lut = color_lut(_id[0])
-					else:
-						_lut = ([0, 0, 0])
-
-					draw.rectangle((_left, _top, _left + _width, _top + _height), outline=_lut)
-					draw.text((_left, _top), row[2], font=fnt, fill=_lut)
-
-				frame["annotations"].append(new_annotation)
-
-		_path = "./Hockey_GroundTruth2.json"
-		if _path != "":
-			with open("{0}".format(_path), 'w') as _f:
-				json.dump(json_frames, _f, indent=4)
-				_f.write(os.linesep)
-
-	return json_frames
-
-
-if __name__ == "__main__":
-
-	print("\n\n* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
-	print("*\n* COMPILE MOTA GROUND TRUTH FILES!\n*")
-	print("* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
-
-	detections = import_csv(annotate_video=False)
-
-	with open('Hockey_GroundTruth2.json', 'r') as f:
-		gt_dict = json.load(f)
-
-	with open('predictions.json', 'r') as f:
-		h_dict = json.load(f)
 
 	id_labels = []
 
@@ -231,7 +216,12 @@ if __name__ == "__main__":
 
 		_frame_num = gt['num']
 
-		if _frame_num > 5:
+		if annotate_video:
+			# Pull first video frame
+			pil_original_image = mpv.getFrame(_frame_num)
+			draw = ImageDraw.Draw(pil_original_image)
+
+		if _frame_num > 250:
 			break
 
 		# print("*", _frame_num)
@@ -244,9 +234,13 @@ if __name__ == "__main__":
 			_y = annotation['y']
 			_w = annotation['width']
 			_h = annotation['height']
-			print("Adding GT:", _x, _y, _w, _h)
+
 			id_labels.append(annotation['id'])
 			a = np.append(a, np.array([[_x, _y, _w, _h]]), axis=0)
+
+			if annotate_video:
+				draw.rectangle((_x, _y, _x + _w, _y + _h), outline=(0, 0, 255))
+				draw.text((_x, _y), annotation['id'], font=fnt, fill=(0, 0, 255))
 
 		# Find detections matching frame id.
 		hypothesis_frame = [x for x in h_dict[0]["frames"] if x['num'] == _frame_num][0]
@@ -261,9 +255,15 @@ if __name__ == "__main__":
 			_y = hypotheses['y']
 			_w = hypotheses['width']
 			_h = hypotheses['height']
-			print("Adding H:", _x, _y, _w, _h)
+
 			b = np.append(b, np.array([[_x, _y, _w, _h]]), axis=0)
 			h_id.append(hypotheses['id'])
+
+			if annotate_video:
+				draw.rectangle((_x, _y, _x + _w, _y + _h), outline=(255, 0, 0))
+				draw.text((_x, _y), str(hypotheses['id']), font=fnt, fill=(255, 0, 0))
+
+		_video_writer.write(cv2.cvtColor(np.array(pil_original_image), cv2.COLOR_RGB2BGR))
 
 		d = mm.distances.norm2squared_matrix(a, b, max_d2=2000)
 
@@ -274,8 +274,7 @@ if __name__ == "__main__":
 			h_id,                  # Detector hypotheses in this frame
 			d
 		)
-
-		print(acc.mot_events.loc[frame_id])
+		# print(acc.mot_events.loc[frame_id])
 
 	print(acc.events)  # a pandas DataFrame containing all events
 
