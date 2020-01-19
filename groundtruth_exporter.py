@@ -126,8 +126,8 @@ def import_csv(ground_truth_detections):
 					# Create frame stub
 					frame = {'timestamp': float(_t / 25.), 'num': _t, "class": "frame", "annotations": []}
 
-				if _t > 25*30:
-					break
+				# if _t > 25*30:
+				# 	break
 
 				_top = int(row[9])
 				_left = int(row[10])
@@ -146,7 +146,7 @@ def import_csv(ground_truth_detections):
 
 				frame["annotations"].append(new_annotation)
 
-		_path = "./Hockey_GroundTruth2.json"
+		_path = "hockey_ground_truth.json"
 		if _path != "":
 			with open("{0}".format(_path), 'w') as _f:
 				json.dump(json_frames, _f, indent=4)
@@ -158,12 +158,16 @@ def import_csv(ground_truth_detections):
 if __name__ == "__main__":
 
 	annotate_video = True
+	short_test = True
 
 	print("\n\n* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
 	print("*\n* COMPILE MOTA GROUND TRUTH FILES!\n*")
 	print("* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
 
 	_set = "0_hockey_5mins.csv", "0_hockey_5mins.mp4", "0_hockey_5mins_annotated.mp4"
+
+	if short_test:
+		_set = "0_hockey_5mins.csv", "0_hockey_5mins.mp4", "0_hockey_5mins__short_annotated.mp4"
 
 	# If running locally this should work.
 	gt_path = "{0}/Dropbox/_Microwork/Annotation_5min/{1}".format(os.path.expanduser("~"), _set[0])
@@ -179,10 +183,10 @@ if __name__ == "__main__":
 	ImageFont.load_default()
 	fnt = ImageFont.load_default()
 
-	with open('Hockey_GroundTruth2.json', 'r') as f:
+	with open('hockey_ground_truth.json', 'r') as f:
 		gt_dict = json.load(f)
 
-	with open('predictions.json', 'r') as f:
+	with open('hockey_predictions.json', 'r') as f:
 		h_dict = json.load(f)
 
 	if annotate_video:
@@ -217,14 +221,12 @@ if __name__ == "__main__":
 		_frame_num = gt['num']
 
 		if annotate_video:
-			# Pull first video frame
 			pil_original_image = mpv.getFrame(_frame_num)
 			draw = ImageDraw.Draw(pil_original_image)
 
-		if _frame_num > 250:
+		if short_test and _frame_num > 250:
 			break
 
-		# print("*", _frame_num)
 		id_labels = []
 
 		a = np.empty((0, 4), int)
