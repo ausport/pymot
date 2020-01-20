@@ -86,7 +86,7 @@ def color_lut(k):
 	return lut[k]
 
 
-def import_csv(ground_truth_detections):
+def import_csv(ground_truth_detections, sport):
 
 	_instances = []
 	_frames = []
@@ -146,7 +146,7 @@ def import_csv(ground_truth_detections):
 
 				frame["annotations"].append(new_annotation)
 
-		_path = "hockey_ground_truth.json"
+		_path = "{0}_ground_truth.json".format(sport)
 		if _path != "":
 			with open("{0}".format(_path), 'w') as _f:
 				json.dump(json_frames, _f, indent=4)
@@ -157,24 +157,25 @@ def import_csv(ground_truth_detections):
 
 if __name__ == "__main__":
 
-	annotate_video = True
+	annotate_video = False
 	short_test = True
+	sport = "1_netball"
 
 	print("\n\n* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
 	print("*\n* COMPILE MOTA GROUND TRUTH FILES!\n*")
 	print("* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
 
-	_set = "0_hockey_5mins.csv", "0_hockey_5mins.mp4", "0_hockey_5mins_annotated.mp4"
+	_set = "{0}_5mins.csv".format(sport), "{0}_5mins.mp4".format(sport), "{0}_5mins_annotated.mp4".format(sport)
 
 	if short_test:
-		_set = "0_hockey_5mins.csv", "0_hockey_5mins.mp4", "0_hockey_5mins__short_annotated.mp4"
+		_set = "{0}_5mins.csv".format(sport), "{0}_5mins.mp4".format(sport), "{0}_5mins__short_annotated.mp4".format(sport)
 
 	# If running locally this should work.
 	gt_path = "{0}/Dropbox/_Microwork/Annotation_5min/{1}".format(os.path.expanduser("~"), _set[0])
 	path_video = "{0}/Dropbox/_Microwork/5min_tracking/{1}".format(os.path.expanduser("~"), _set[1])
 	movie_out = "{0}/Dropbox/_Microwork/5min_tracking/{1}".format(os.path.expanduser("~"), _set[2])
 
-	detections = import_csv(gt_path)
+	detections = import_csv(ground_truth_detections=gt_path, sport=sport)
 
 	_video_writer = None
 	mpv = None
@@ -183,10 +184,10 @@ if __name__ == "__main__":
 	ImageFont.load_default()
 	fnt = ImageFont.load_default()
 
-	with open('hockey_ground_truth.json', 'r') as f:
+	with open('{0}_ground_truth.json'.format(sport), 'r') as f:
 		gt_dict = json.load(f)
 
-	with open('hockey_predictions.json', 'r') as f:
+	with open('{0}_predictions.json'.format(sport), 'r') as f:
 		h_dict = json.load(f)
 
 	if annotate_video:
@@ -224,7 +225,7 @@ if __name__ == "__main__":
 			pil_original_image = mpv.getFrame(_frame_num)
 			draw = ImageDraw.Draw(pil_original_image)
 
-		if short_test and _frame_num > 250:
+		if short_test and _frame_num > 750:
 			break
 
 		id_labels = []
@@ -265,7 +266,8 @@ if __name__ == "__main__":
 				draw.rectangle((_x, _y, _x + _w, _y + _h), outline=(255, 0, 0))
 				draw.text((_x, _y), str(hypotheses['id']), font=fnt, fill=(255, 0, 0))
 
-		_video_writer.write(cv2.cvtColor(np.array(pil_original_image), cv2.COLOR_RGB2BGR))
+		if annotate_video:
+			_video_writer.write(cv2.cvtColor(np.array(pil_original_image), cv2.COLOR_RGB2BGR))
 
 		d = mm.distances.norm2squared_matrix(a, b, max_d2=2000)
 
