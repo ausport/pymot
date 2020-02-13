@@ -159,7 +159,12 @@ if __name__ == "__main__":
 
 	annotate_video = False
 	short_test = True
+
 	sport = "1_netball"
+	sport = "0_hockey"
+
+	mode = "sport"
+	# mode = "naive"
 
 	print("\n\n* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *")
 	print("*\n* COMPILE MOTA GROUND TRUTH FILES!\n*")
@@ -187,7 +192,7 @@ if __name__ == "__main__":
 	with open('{0}_ground_truth.json'.format(sport), 'r') as f:
 		gt_dict = json.load(f)
 
-	with open('{0}_predictions.json'.format(sport), 'r') as f:
+	with open('{0}_predictions_{1}_yolo3.json'.format(sport, mode), 'r') as f:
 		h_dict = json.load(f)
 
 	if annotate_video:
